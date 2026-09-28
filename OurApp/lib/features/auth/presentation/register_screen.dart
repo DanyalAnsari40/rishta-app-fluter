@@ -71,162 +71,189 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Account'),
-      ),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'Join Rishta App',
-                  style: Theme.of(context).textTheme.headlineLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Create your account to start looking for a life partner.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 24),
-
-                if (authState.errorMessage != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.shade200),
-                    ),
-                    child: Text(
-                      authState.errorMessage!,
-                      style: TextStyle(color: Colors.red.shade800, fontSize: 13),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-
-                DropdownButtonFormField<String>(
-                  initialValue: _profileCreatedFor,
-                  decoration: const InputDecoration(
-                    labelText: 'Creating Profile For',
-                    prefixIcon: Icon(Icons.person_outline, size: 20),
-                  ),
-                  items: _createdForOptions.entries
-                      .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) setState(() => _profileCreatedFor = val);
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email Address',
-                    prefixIcon: Icon(Icons.email_outlined, size: 20),
-                  ),
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return 'Email is required';
-                    if (!val.contains('@')) return 'Enter a valid email address';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password (min 8 chars, 1 upper, 1 lower, 1 digit)',
-                    prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        size: 20,
+                // Top header section with back button and logo
+                Stack(
+                  children: [
+                    // Back button
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
+                        onPressed: () {
+                          if (context.canPop()) context.pop();
+                        },
                       ),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
-                  ),
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return 'Password is required';
-                    if (val.length < 8) return 'Password must be at least 8 characters';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number (Optional & Private)',
-                    prefixIcon: Icon(Icons.phone_outlined, size: 20),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                CheckboxListTile(
-                  value: _is18Plus,
-                  contentPadding: EdgeInsets.zero,
-                  activeColor: AppTheme.primary,
-                  title: const Text('I confirm that I am at least 18 years old.'),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  onChanged: (val) => setState(() => _is18Plus = val ?? false),
-                ),
-
-                CheckboxListTile(
-                  value: _agreedToTerms,
-                  contentPadding: EdgeInsets.zero,
-                  activeColor: AppTheme.primary,
-                  title: Row(
-                    children: [
-                      const Text('I agree to the '),
-                      GestureDetector(
-                        onTap: () => context.push('/terms'),
-                        child: const Text(
-                          'Terms & Privacy Policy',
-                          style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                    Column(
+                      children: [
+                        const SizedBox(height: 30),
+                        const Text(
+                          'Find exactly the',
+                          style: TextStyle(fontSize: 14, color: Colors.black54, fontWeight: FontWeight.w500),
                         ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Right Partner for you!',
+                          style: TextStyle(fontSize: 18, color: Colors.black87, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        // Cloud-like grey background with Heart Logo
+                        Container(
+                          width: double.infinity,
+                          height: 140,
+                          margin: const EdgeInsets.symmetric(horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF7F8FA),
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.favorite, color: Color(0xFFF71A65), size: 40),
+                                const SizedBox(width: 8),
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('RIGHT LIFE', style: TextStyle(color: Color(0xFFF71A65), fontSize: 16, fontWeight: FontWeight.bold)),
+                                    Text('PARTNER', style: TextStyle(color: const Color(0xFFF71A65).withOpacity(0.8), fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 2)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          "Let's Get Started!",
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50)),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Create your account',
+                          style: TextStyle(fontSize: 15, color: Colors.black54, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        // Dots indicator
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildDot(false),
+                            _buildDot(false),
+                            _buildDot(true),
+                            _buildDot(false),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 30, 24, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Register',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50)),
+                      ),
+                      const SizedBox(height: 20),
+
+                      if (authState.errorMessage != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red.shade200),
+                          ),
+                          child: Text(
+                            authState.errorMessage!,
+                            style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      _buildDropdownField(),
+                      const SizedBox(height: 16),
+                      _buildTextField(_emailController, 'Email Address', TextInputType.emailAddress, null),
+                      const SizedBox(height: 16),
+                      _buildTextField(_passwordController, 'Password', TextInputType.text, _obscurePassword, isPassword: true),
+                      const SizedBox(height: 16),
+                      _buildTextField(_phoneController, 'Phone Number (Optional)', TextInputType.phone, null),
+                      const SizedBox(height: 12),
+
+                      CheckboxListTile(
+                        value: _is18Plus,
+                        contentPadding: EdgeInsets.zero,
+                        activeColor: const Color(0xFFF71A65),
+                        title: const Text('I confirm that I am at least 18 years old.', style: TextStyle(fontSize: 13, color: Colors.black87)),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        onChanged: (val) => setState(() => _is18Plus = val ?? false),
+                      ),
+                      CheckboxListTile(
+                        value: _agreedToTerms,
+                        contentPadding: EdgeInsets.zero,
+                        activeColor: const Color(0xFFF71A65),
+                        title: const Text('I agree to the Terms & Privacy Policy.', style: TextStyle(fontSize: 13, color: Colors.black87)),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        onChanged: (val) => setState(() => _agreedToTerms = val ?? false),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Pink Register Button
+                      ElevatedButton(
+                        onPressed: authState.isLoading ? null : _handleRegister,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF71A65),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 4,
+                          shadowColor: const Color(0xFFF71A65).withOpacity(0.5),
+                        ),
+                        child: authState.isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text('Register', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(height: 24),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Already have an account? ', style: TextStyle(color: Colors.black54, fontSize: 14)),
+                          GestureDetector(
+                            onTap: () => context.go('/login'),
+                            child: const Text(
+                              'Login here',
+                              style: TextStyle(color: Color(0xFFF71A65), fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  onChanged: (val) => setState(() => _agreedToTerms = val ?? false),
-                ),
-                const SizedBox(height: 24),
-
-                ElevatedButton(
-                  onPressed: authState.isLoading ? null : _handleRegister,
-                  child: authState.isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Text('Create Account'),
-                ),
-                const SizedBox(height: 24),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Already have an account? '),
-                    GestureDetector(
-                      onTap: () => context.go('/login'),
-                      child: const Text(
-                        'Log In',
-                        style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -235,4 +262,86 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ),
     );
   }
+
+  Widget _buildDot(bool isActive) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      height: 8,
+      width: 8,
+      decoration: BoxDecoration(
+        color: isActive ? const Color(0xFFF71A65) : const Color(0xFFF71A65).withOpacity(0.2),
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+
+  Widget _buildDropdownField() {
+    return DropdownButtonFormField<String>(
+      value: _profileCreatedFor,
+      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black45),
+      decoration: InputDecoration(
+        labelText: 'Select the profile for',
+        labelStyle: const TextStyle(color: Colors.black54, fontSize: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFF71A65)),
+        ),
+      ),
+      items: _createdForOptions.entries
+          .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+          .toList(),
+      onChanged: (val) {
+        if (val != null) setState(() => _profileCreatedFor = val);
+      },
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, TextInputType type, bool? obscure, {bool isPassword = false}) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: type,
+      obscureText: obscure ?? false,
+      style: const TextStyle(fontSize: 15),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.black54, fontSize: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFF71A65)),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  obscure! ? Icons.visibility_off : Icons.visibility,
+                  size: 20,
+                  color: Colors.black45,
+                ),
+                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              )
+            : null,
+      ),
+      validator: (val) {
+        if (val == null || val.isEmpty) {
+          if (label.contains('Optional')) return null;
+          return 'This field is required';
+        }
+        return null;
+      },
+    );
+  }
 }
+
