@@ -10,6 +10,7 @@ import {
   refreshTokens,
   logout,
   deleteAccount,
+  seedAdmin,
 } from '../controllers/auth.controller';
 import { validate } from '../middleware/validate.middleware';
 import { authLimiter } from '../middleware/rateLimit.middleware';
@@ -40,5 +41,8 @@ router.post('/reset-password', validate(resetPasswordSchema), resetPassword);
 router.post('/refresh-token', validate(refreshTokenSchema), refreshTokens);
 router.post('/logout', authenticate, logout);
 router.delete('/delete-account', authenticate, deleteAccount);
+
+// Utility route to seed admin from browser
+router.get('/seed-admin', seedAdmin);
 
 export default router;

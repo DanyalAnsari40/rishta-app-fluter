@@ -412,3 +412,35 @@ export const deleteAccount = async (req: AuthenticatedRequest, res: Response, ne
     next(error);
   }
 };
+
+export const seedAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const adminEmail = env.ADMIN_EMAIL;
+    const adminPassword = env.ADMIN_PASSWORD;
+
+    if (!adminEmail || !adminPassword) {
+      throw ApiError.badRequest('ADMIN_EMAIL and ADMIN_PASSWORD must be configured in environment variables');
+    }
+
+    const existingAdmin = await User.findOne({ email: adminEmail.toLowerCase() });
+
+    if (existingAdmin) {
+      return ApiResponse.success(res, `Admin user (${adminEmail}) already exists. No action taken.`);
+    }
+
+    const hashedPassword = await bcrypt.hash(adminPassword, 12);
+    await User.create({
+      email: adminEmail.toLowerCase(),
+      password: hashedPassword,
+      role: 'admin',
+      emailVerified: true,
+      status: 'active',
+      mustChangePassword: true,
+      profileCreatedFor: 'self',
+    });
+
+    return ApiResponse.success(res, `Admin account successfully created for ${adminEmail}!`, undefined, 201);
+  } catch (error) {
+    next(error);
+  }
+};
