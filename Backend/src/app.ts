@@ -35,6 +35,15 @@ app.use(mongoSanitize());
 // API Routes (versioned /api/v1)
 app.use('/api/v1', apiV1Routes);
 
+// Root route for Vercel
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Rishta App Backend is running successfully on Vercel! 🎉',
+  });
+});
+
+
 // 404 Route Not Found Handler
 app.use(notFoundHandler);
 
