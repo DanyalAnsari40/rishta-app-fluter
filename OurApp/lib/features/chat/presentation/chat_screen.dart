@@ -1,7 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../../../core/theme/app_theme.dart';
-import '../../../core/storage/token_storage.dart';
 import '../../../core/network/api_client.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -23,7 +22,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = true;
   List<Map<String, dynamic>> _messages = [];
-  io.Socket? _socket;
+  Timer? _pollingTimer;
 
   @override
   void initState() {
@@ -33,82 +32,78 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
-    _socket?.disconnect();
-    _socket?.dispose();
+    _pollingTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
   Future<void> _initChatSession() async {
-    final token = await TokenStorage.getAccessToken();
+    await _fetchMessages();
+    
+    // Smart Polling: Fetch new messages every 3 seconds
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _fetchMessages(isBackground: true);
+    });
+  }
 
-    // 1. Fetch initial message history via REST API
+  Future<void> _fetchMessages({bool isBackground = false}) async {
     try {
       final apiClient = ApiClient();
       final res = await apiClient.dio.get('/chat/conversations/${widget.conversationId}/messages');
       if (res.data['success'] == true) {
         final rawMsgs = res.data['data']['messages'] as List<dynamic>;
-        setState(() {
-          _messages = rawMsgs.map((e) => Map<String, dynamic>.from(e)).toList();
-          _isLoading = false;
-        });
-        _scrollToBottom();
-      }
-    } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-
-    // 2. Connect to Socket.IO realtime server
-    if (token != null) {
-      _socket = io.io(
-        'http://192.168.1.47:5000',
-        io.OptionBuilder()
-            .setTransports(['websocket', 'polling'])
-            .setAuth({'token': token})
-            .enableAutoConnect()
-            .build(),
-      );
-
-      _socket?.onConnect((_) {
-        debugPrint('Socket.IO Connected to server');
-      });
-
-      // Handle incoming realtime message
-      _socket?.on('message:new', (data) {
-        if (mounted) {
+        
+        // Only update state if message count changes to prevent jumpy scrolling
+        if (_messages.length != rawMsgs.length) {
           setState(() {
-            _messages.add(Map<String, dynamic>.from(data));
+            _messages = rawMsgs.map((e) => Map<String, dynamic>.from(e)).toList();
+            _isLoading = false;
           });
           _scrollToBottom();
+        } else if (!isBackground) {
+          setState(() => _isLoading = false);
         }
-      });
+      }
+    } catch (_) {
+      if (mounted && !isBackground) setState(() => _isLoading = false);
     }
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
     final targetUserId = widget.extraData['targetUserId'];
-
-    _socket?.emitWithAck(
-      'message:send',
-      {
-        'receiverId': targetUserId,
-        'text': text,
-      },
-      ack: (data) {
-        if (data != null && data['success'] == true && mounted) {
-          setState(() {
-            _messages.add(Map<String, dynamic>.from(data['data']));
-          });
-          _scrollToBottom();
-        }
-      },
-    );
-
+    
+    // Optimistic UI update
+    final tempMsg = {
+      'senderId': 'me', // Will be determined as isMe in builder
+      'receiverId': targetUserId,
+      'text': text,
+      'content': text, 
+    };
+    
+    setState(() {
+      _messages.add(tempMsg);
+    });
+    _scrollToBottom();
     _messageController.clear();
+
+    try {
+      final apiClient = ApiClient();
+      await apiClient.dio.post(
+        '/chat/conversations/${widget.conversationId}/messages',
+        data: {
+          'receiverId': targetUserId,
+          'content': text,
+        },
+      );
+      // Fetch actual message to get proper IDs and timestamps
+      _fetchMessages(isBackground: true);
+    } catch (e) {
+      debugPrint("Failed to send message: $e");
+    }
   }
 
   void _scrollToBottom() {
@@ -161,8 +156,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       itemCount: _messages.length,
                       itemBuilder: (context, index) {
                         final msg = _messages[index];
-                        final isMe = msg['senderId'] != widget.extraData['targetUserId'];
-                        return _buildChatBubble(msg['text'] ?? '', isMe);
+                        final isMe = msg['senderId'] != widget.extraData['targetUserId'] || msg['senderId'] == 'me';
+                        return _buildChatBubble(msg['content'] ?? msg['text'] ?? '', isMe);
                       },
                     ),
             ),

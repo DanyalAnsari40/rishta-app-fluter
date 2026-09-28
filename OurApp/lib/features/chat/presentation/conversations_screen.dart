@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -13,15 +14,27 @@ class ConversationsScreen extends StatefulWidget {
 class _ConversationsScreenState extends State<ConversationsScreen> {
   bool _isLoading = true;
   List<dynamic> _conversations = [];
+  Timer? _pollingTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchConversations();
+    
+    // Poll for conversation list updates every 5 seconds
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _fetchConversations(isBackground: true);
+    });
   }
 
-  Future<void> _fetchConversations() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchConversations({bool isBackground = false}) async {
+    if (!isBackground) setState(() => _isLoading = true);
     try {
       final apiClient = ApiClient();
       final response = await apiClient.dio.get('/chat/conversations');
@@ -29,11 +42,11 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       if (response.data['success'] == true) {
         setState(() {
           _conversations = response.data['data'] ?? [];
-          _isLoading = false;
+          if (!isBackground) _isLoading = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted && !isBackground) setState(() => _isLoading = false);
     }
   }
 

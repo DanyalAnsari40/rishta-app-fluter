@@ -1,30 +1,18 @@
 import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
 import app from './app';
 import { env } from './config/env';
 import { connectDB } from './config/db';
 import { initCloudinary } from './config/cloudinary';
 import { initFirebase } from './config/firebase';
-import { initChatSockets } from './sockets/chat.socket';
 import { logger } from './utils/logger';
 
 const server = http.createServer(app);
-
-// Initialize Socket.IO Server
-const io = new SocketIOServer(server, {
-  cors: {
-    origin: env.CLIENT_URL || '*',
-    credentials: true,
-  },
-});
-
-initChatSockets(io);
 
 const startServer = async () => {
   server.listen(env.PORT, () => {
     logger.info(`🚀 Server running in [${env.NODE_ENV}] mode on port ${env.PORT}`);
     logger.info(`🔗 Health route available at: http://localhost:${env.PORT}/api/v1/health`);
-    logger.info(`💬 Socket.IO Realtime Chat initialized`);
+    logger.info(`💬 Chat API initialized (Polling Mode)`);
   });
 
   // Initialize MongoDB Connection asynchronously

@@ -105,3 +105,33 @@ export const markMessagesRead = async (req: AuthenticatedRequest, res: Response,
     next(error);
   }
 };
+
+export const sendMessage = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const senderId = req.user!._id;
+    const { conversationId } = req.params;
+    const { content, receiverId } = req.body;
+
+    if (!content || !receiverId) {
+      throw ApiError.badRequest('Content and receiverId are required');
+    }
+
+    const message = await Message.create({
+      conversationId,
+      senderId,
+      receiverId,
+      content,
+      read: false,
+    });
+
+    await Conversation.findByIdAndUpdate(conversationId, {
+      lastMessage: content,
+      lastMessageAt: new Date(),
+    });
+
+    return ApiResponse.success(res, 'Message sent successfully', message);
+  } catch (error) {
+    next(error);
+  }
+};
+
