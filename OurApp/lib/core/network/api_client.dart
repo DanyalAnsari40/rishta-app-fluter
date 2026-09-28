@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import '../storage/token_storage.dart';
 
 class ApiClient {
-  static final String baseUrl = 'http://192.168.1.47:5000/api/v1'; // Default for Android emulator & local testing
+  static final String baseUrl = 'https://rishta-app-fluter.vercel.app/api/v1'; // Vercel Production Server
   static final String localhostUrl = 'http://192.168.1.47:5000/api/v1';
 
   final Dio dio;
