@@ -46,36 +46,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.favorite_rounded,
-                size: 60,
-                color: AppTheme.primary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Rishta',
-              style: TextStyle(
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Find Your Perfect Life Partner',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white70,
-              ),
+            Image.asset(
+              'assets/images/logo_splash.png',
+              width: 220,
+              height: 220,
+              fit: BoxFit.contain,
             ),
             const SizedBox(height: 48),
             const CircularProgressIndicator(
