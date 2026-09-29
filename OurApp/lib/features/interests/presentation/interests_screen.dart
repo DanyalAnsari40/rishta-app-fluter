@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
 import '../../profile/presentation/profile_detail_screen.dart';
 import '../../chat/presentation/chat_screen.dart';
@@ -125,7 +124,7 @@ class _InterestsScreenState extends State<InterestsScreen> with SingleTickerProv
         content: Text(
           'You and $name are now connected! Mutual interest has been confirmed and saved.',
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 14, color: Colors.black70, height: 1.4),
+          style: TextStyle(fontSize: 14, color: Colors.black.withValues(alpha: 0.7), height: 1.4),
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [

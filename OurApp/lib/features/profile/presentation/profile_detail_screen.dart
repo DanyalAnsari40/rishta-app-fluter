@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
 import '../../chat/presentation/chat_screen.dart';
 
@@ -605,7 +604,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             ),
             content: Text(
               'Your message request has been sent to $name.\n\nThey will receive a notification and see your request in their Received matches tab. Once accepted, you can chat freely!',
-              style: const TextStyle(fontSize: 14, height: 1.4, color: Colors.black70),
+              style: TextStyle(fontSize: 14, height: 1.4, color: Colors.black.withValues(alpha: 0.7)),
             ),
             actions: [
               TextButton(
