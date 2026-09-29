@@ -77,6 +77,29 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     }
   }
 
+  Future<bool> submitAllSections(Map<String, Map<String, dynamic>> allSections) async {
+    state = state.copyWith(isSaving: true, errorMessage: null);
+    try {
+      for (final entry in allSections.entries) {
+        await _apiClient.dio.put('/profile/section/${entry.key}', data: entry.value);
+      }
+      final response = await _apiClient.dio.get('/profile/me');
+      if (response.data['success'] == true) {
+        final updatedProfile = ProfileModel.fromJson(response.data['data']);
+        state = state.copyWith(
+          profile: updatedProfile,
+          isSaving: false,
+        );
+        return true;
+      }
+      state = state.copyWith(isSaving: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(isSaving: false, errorMessage: 'Failed to save profile');
+      return false;
+    }
+  }
+
   void setStep(int step) {
     if (step >= 1 && step <= 8) {
       state = state.copyWith(currentStep: step);

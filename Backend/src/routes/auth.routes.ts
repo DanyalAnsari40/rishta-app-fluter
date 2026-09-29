@@ -7,6 +7,7 @@ import {
   resendVerification,
   forgotPassword,
   resetPassword,
+  getMe,
   refreshTokens,
   logout,
   deleteAccount,
@@ -27,6 +28,7 @@ import {
 
 const router = Router();
 
+router.get('/me', authenticate, getMe);
 router.post('/register', authLimiter, validate(registerSchema), register);
 router.post('/login', authLimiter, validate(loginSchema), login);
 router.post('/google-login', authLimiter, validate(googleLoginSchema), googleLogin);

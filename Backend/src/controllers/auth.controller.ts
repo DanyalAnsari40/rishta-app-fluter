@@ -326,6 +326,24 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+export const getMe = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user!;
+    return ApiResponse.success(res, 'User fetched successfully', {
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        emailVerified: user.emailVerified,
+        mustChangePassword: user.mustChangePassword || false,
+        profileCreatedFor: user.profileCreatedFor,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const refreshTokens = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { refreshToken } = req.body;

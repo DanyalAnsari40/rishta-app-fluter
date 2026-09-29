@@ -17,20 +17,45 @@ import '../../features/settings/presentation/blocked_users_screen.dart';
 import '../../features/chat/presentation/conversations_screen.dart';
 import '../../features/chat/presentation/chat_screen.dart';
 
+class RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  RouterNotifier(this._ref) {
+    _ref.listen<AuthState>(authProvider, (previous, next) {
+      if (previous?.isAuthenticated != next.isAuthenticated ||
+          previous?.isLoading != next.isLoading ||
+          previous?.user != next.user) {
+        notifyListeners();
+      }
+    });
+  }
+}
+
+final routerNotifierProvider = Provider<RouterNotifier>((ref) {
+  return RouterNotifier(ref);
+});
+
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final notifier = ref.watch(routerNotifierProvider);
 
   return GoRouter(
     initialLocation: '/',
-    refreshListenable: ValueNotifier(authState.isAuthenticated),
+    refreshListenable: notifier,
     redirect: (BuildContext context, GoRouterState state) {
+      final authState = ref.read(authProvider);
+
+      if (authState.isLoading) {
+        return null;
+      }
+
       final isAuth = authState.isAuthenticated;
       final isLoggingIn = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
           state.matchedLocation == '/intro' ||
           state.matchedLocation == '/language' ||
           state.matchedLocation == '/forgot-password' ||
-          state.matchedLocation == '/terms';
+          state.matchedLocation == '/terms' ||
+          state.matchedLocation == '/verify-email';
 
       if (!isAuth && !isLoggingIn && state.matchedLocation != '/') {
         return '/intro';
@@ -39,8 +64,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isAuth) {
         final user = authState.user;
         if (user != null && user.isAdmin) {
-          if (state.matchedLocation == '/login' || state.matchedLocation == '/') {
+          if (state.matchedLocation == '/login' ||
+              state.matchedLocation == '/register' ||
+              state.matchedLocation == '/intro' ||
+              state.matchedLocation == '/') {
             return '/admin/dashboard';
+          }
+        } else if (user != null && !user.emailVerified) {
+          if (state.matchedLocation != '/verify-email') {
+            return '/verify-email';
           }
         } else if (isLoggingIn || state.matchedLocation == '/') {
           return '/home';
@@ -109,7 +141,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
-      // Placeholder routes for home and admin dashboard until subsequent phases
       GoRoute(
         path: '/home',
         builder: (context, state) => const MainLayoutScreen(),

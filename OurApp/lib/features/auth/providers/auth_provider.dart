@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../data/models/user_model.dart';
+import '../../profile/providers/profile_provider.dart';
 
 class AuthState {
   final UserModel? user;
@@ -34,8 +35,9 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final ApiClient _apiClient = ApiClient();
+  final Ref _ref;
 
-  AuthNotifier() : super(AuthState()) {
+  AuthNotifier(this._ref) : super(AuthState()) {
     checkAuthStatus();
   }
 
@@ -43,24 +45,39 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true);
     try {
       final token = await TokenStorage.getAccessToken();
-      final role = await TokenStorage.getUserRole();
-      final verified = await TokenStorage.isEmailVerified();
 
       if (token != null && token.isNotEmpty) {
-        state = state.copyWith(
-          isAuthenticated: true,
-          isLoading: false,
-          user: UserModel(
-            id: '',
-            email: '',
-            role: role ?? 'user',
-            emailVerified: verified,
-            profileCreatedFor: 'self',
-          ),
-        );
-      } else {
-        state = state.copyWith(isAuthenticated: false, isLoading: false);
+        // Fetch fresh user data from database
+        try {
+          final response = await _apiClient.dio.get('/auth/me');
+          if (response.data['success'] == true) {
+            final user = UserModel.fromJson(response.data['data']['user']);
+            state = state.copyWith(
+              user: user,
+              isAuthenticated: true,
+              isLoading: false,
+            );
+            return;
+          }
+        } catch (_) {
+          // If /auth/me fails, fallback to cached storage details if token exists
+          final role = await TokenStorage.getUserRole();
+          final verified = await TokenStorage.isEmailVerified();
+          state = state.copyWith(
+            isAuthenticated: true,
+            isLoading: false,
+            user: UserModel(
+              id: '',
+              email: '',
+              role: role ?? 'user',
+              emailVerified: verified,
+              profileCreatedFor: 'self',
+            ),
+          );
+          return;
+        }
       }
+      state = state.copyWith(isAuthenticated: false, isLoading: false);
     } catch (_) {
       state = state.copyWith(isAuthenticated: false, isLoading: false);
     }
@@ -86,6 +103,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           role: user.role,
           emailVerified: user.emailVerified,
         );
+
+        // Clear any previous profile state in memory
+        _ref.invalidate(profileProvider);
 
         state = state.copyWith(
           user: user,
@@ -138,6 +158,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           emailVerified: user.emailVerified,
         );
 
+        // Clear any previous profile state in memory
+        _ref.invalidate(profileProvider);
+
         state = state.copyWith(
           user: user,
           isAuthenticated: true,
@@ -183,6 +206,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           emailVerified: user.emailVerified,
         );
 
+        // Clear any previous profile state in memory
+        _ref.invalidate(profileProvider);
+
         state = state.copyWith(
           user: user,
           isAuthenticated: true,
@@ -208,10 +234,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _apiClient.dio.post('/auth/logout', data: {'refreshToken': refreshToken});
     } catch (_) {}
     await TokenStorage.clear();
+
+    // Invalidate cached profile provider so next logged in user doesn't see old user's data
+    _ref.invalidate(profileProvider);
+
     state = AuthState();
   }
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier();
+  return AuthNotifier(ref);
 });

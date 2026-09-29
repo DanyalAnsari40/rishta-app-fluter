@@ -19,11 +19,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _navigateNext() async {
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
 
     final authState = ref.read(authProvider);
 
+    if (authState.isLoading) {
+      ref.listenManual(authProvider, (previous, next) {
+        if (!next.isLoading && mounted) {
+          _performNavigation(next);
+        }
+      });
+    } else {
+      _performNavigation(authState);
+    }
+  }
+
+  void _performNavigation(AuthState authState) {
     if (authState.isAuthenticated) {
       final user = authState.user;
       if (user != null && user.isAdmin) {
