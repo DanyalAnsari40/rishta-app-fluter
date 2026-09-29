@@ -19,9 +19,33 @@ class MainLayoutScreen extends ConsumerStatefulWidget {
 class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
   int _currentIndex = 0;
 
+  int _unreadCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUnreadNotificationCount();
+  }
+
+  Future<void> _fetchUnreadNotificationCount() async {
+    try {
+      final apiClient = ApiClient();
+      final response = await apiClient.dio.get('/notifications');
+      if (response.data['success'] == true) {
+        setState(() {
+          _unreadCount = response.data['data']['unreadCount'] ?? 0;
+        });
+      }
+    } catch (_) {}
+  }
+
   void _onNavigateTab(int index) {
     if (index >= 0 && index < 5) {
       setState(() => _currentIndex = index);
+      if (index == 3) {
+        // Clear badge count when visiting notifications tab
+        setState(() => _unreadCount = 0);
+      }
     }
   }
 
@@ -113,7 +137,12 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
       actions: [
         // Notification Bell with Red Badge Dot
         GestureDetector(
-          onTap: () => setState(() => _currentIndex = 3),
+          onTap: () {
+            setState(() {
+              _currentIndex = 3;
+              _unreadCount = 0;
+            });
+          },
           behavior: HitTestBehavior.opaque,
           child: Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -133,30 +162,31 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
                     size: 22,
                   ),
                 ),
-                Positioned(
-                  top: 2,
-                  right: 2,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: const Text(
-                      '2',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                if (_unreadCount > 0)
+                  Positioned(
+                    top: 2,
+                    right: 2,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppTheme.primary,
+                        shape: BoxShape.circle,
                       ),
-                      textAlign: TextAlign.center,
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        _unreadCount > 9 ? '9+' : '$_unreadCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),

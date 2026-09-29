@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
 import '../../profile/presentation/profile_detail_screen.dart';
+import '../../chat/presentation/chat_screen.dart';
 
 
 class InterestsScreen extends StatefulWidget {
@@ -71,14 +72,96 @@ class _InterestsScreenState extends State<InterestsScreen> with SingleTickerProv
   Future<void> _acceptInterest(String interestId) async {
     try {
       final apiClient = ApiClient();
-      await apiClient.dio.put('/interests/$interestId/accept');
+      final response = await apiClient.dio.put('/interests/$interestId/accept');
       _fetchInterests(_activeType);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Interest accepted! You can now chat.')),
+
+      if (mounted && response.data['success'] == true) {
+        final data = response.data['data'] ?? {};
+        final partnerName = data['partnerName'] ?? 'Member';
+        final conversationId = data['conversationId']?.toString();
+        final partnerUserId = data['partnerUserId']?.toString();
+        final partnerPhotoUrl = data['partnerPhotoUrl'];
+
+        _showConnectionSuccessfulDialog(
+          context: context,
+          name: partnerName,
+          conversationId: conversationId,
+          targetUserId: partnerUserId,
+          photoUrl: partnerPhotoUrl,
         );
       }
     } catch (_) {}
+  }
+
+  void _showConnectionSuccessfulDialog({
+    required BuildContext context,
+    required String name,
+    required String? conversationId,
+    required String? targetUserId,
+    required String? photoUrl,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF0F5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.favorite_rounded, color: Color(0xFFF71A65), size: 36),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Connection Successful! 🎉',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1C1C1E)),
+            ),
+          ],
+        ),
+        content: Text(
+          'You and $name are now connected! Mutual interest has been confirmed and saved.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 14, color: Colors.black70, height: 1.4),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          if (conversationId != null && targetUserId != null)
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF71A65),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+              icon: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 18),
+              label: const Text('Start Chat Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      conversationId: conversationId,
+                      extraData: {
+                        'targetUserId': targetUserId,
+                        'name': name,
+                        'primaryPhotoUrl': photoUrl,
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
   }
 
   Future<void> _declineInterest(String interestId) async {
@@ -249,10 +332,7 @@ class _InterestsScreenState extends State<InterestsScreen> with SingleTickerProv
                         itemCount: filteredInterests.length,
                         itemBuilder: (context, index) {
                           final item = filteredInterests[index];
-                          final target = item['targetUser'] ?? {};
-                          final interestId = item['interestId'];
-
-                          return _buildInterestCard(target, interestId);
+                          return _buildInterestCard(item);
                         },
                       ),
           ),
@@ -289,178 +369,204 @@ class _InterestsScreenState extends State<InterestsScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildInterestCard(Map<String, dynamic> target, String interestId) {
+  Widget _buildInterestCard(Map<String, dynamic> item) {
+    final target = item['targetUser'] ?? {};
+    final interestId = item['interestId']?.toString() ?? '';
+    final conversationId = item['conversationId']?.toString();
+    final name = target['name'] ?? 'Member';
+
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ProfileDetailScreen(profileData: target),
-          ),
-        );
+        if (_activeType == 'accepted') {
+          _showConnectionSuccessfulDialog(
+            context: context,
+            name: name,
+            conversationId: conversationId,
+            targetUserId: target['userId']?.toString(),
+            photoUrl: target['primaryPhotoUrl'],
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProfileDetailScreen(profileData: target),
+            ),
+          );
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            // Profile photo with gradient border
-            Container(
-              padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFFF71A65), Color(0xFFFF528E)],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: CircleAvatar(
-                radius: 26,
-                backgroundColor: Colors.grey.shade200,
-                backgroundImage: target['primaryPhotoUrl'] != null
-                    ? NetworkImage(target['primaryPhotoUrl'])
-                    : null,
-                child: target['primaryPhotoUrl'] == null
-                    ? const Icon(Icons.person, color: Colors.grey)
-                    : null,
-              ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
-            const SizedBox(width: 12),
-
-            // Profile info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${target['name'] ?? 'Member'}, ${target['age'] ?? ''}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Colors.black87,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '${target['city'] ?? 'Pakistan'} • ${target['education'] ?? 'Educated'}',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-
-            // Action Buttons
-            if (_activeType == 'received') ...[
-              GestureDetector(
-                onTap: () => _acceptInterest(interestId),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFF71A65), Color(0xFFFF4884)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFF71A65).withOpacity(0.3),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Text(
-                    'Accept',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              GestureDetector(
-                onTap: () => _declineInterest(interestId),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Text(
-                    'Decline',
-                    style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 12),
-                  ),
-                ),
-              ),
-            ] else if (_activeType == 'sent') ...[
-              GestureDetector(
-                onTap: () => _withdrawInterest(interestId),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.shade200),
-                  ),
-                  child: Text(
-                    'Withdraw',
-                    style: TextStyle(color: Colors.red.shade600, fontWeight: FontWeight.w600, fontSize: 12),
-                  ),
-                ),
-              ),
-            ] else if (_activeType == 'accepted') ...[
+          ],
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              // Profile photo with gradient border
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFF71A65).withOpacity(0.12),
-                      const Color(0xFFFF528E).withOpacity(0.08),
-                    ],
+                    colors: [Color(0xFFF71A65), Color(0xFFFF528E)],
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFF71A65).withOpacity(0.2)),
+                  shape: BoxShape.circle,
                 ),
-                child: const Row(
+                child: CircleAvatar(
+                  radius: 26,
+                  backgroundColor: Colors.grey.shade200,
+                  backgroundImage: target['primaryPhotoUrl'] != null
+                      ? NetworkImage(target['primaryPhotoUrl'])
+                      : null,
+                  child: target['primaryPhotoUrl'] == null
+                      ? const Icon(Icons.person, color: Colors.grey)
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Profile info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.chat_bubble_outline_rounded, size: 14, color: Color(0xFFF71A65)),
-                    SizedBox(width: 4),
                     Text(
-                      'Chat Ready',
-                      style: TextStyle(color: Color(0xFFF71A65), fontWeight: FontWeight.bold, fontSize: 12),
+                      '${target['name'] ?? 'Member'}, ${target['age'] ?? ''}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${target['city'] ?? 'Pakistan'} • ${target['education'] ?? 'Educated'}',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-            ] else if (_activeType == 'declined') ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(10),
+
+              // Action Buttons
+              if (_activeType == 'received') ...[
+                GestureDetector(
+                  onTap: () => _acceptInterest(interestId),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFF71A65), Color(0xFFFF4884)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFF71A65).withOpacity(0.3),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Text(
+                      'Accept',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ),
                 ),
-                child: Text(
-                  'Declined',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w500),
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: () => _declineInterest(interestId),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Text(
+                      'Decline',
+                      style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 12),
+                    ),
+                  ),
                 ),
-              ),
+              ] else if (_activeType == 'sent') ...[
+                GestureDetector(
+                  onTap: () => _withdrawInterest(interestId),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Text(
+                      'Withdraw',
+                      style: TextStyle(color: Colors.red.shade600, fontWeight: FontWeight.w600, fontSize: 12),
+                    ),
+                  ),
+                ),
+              ] else if (_activeType == 'accepted') ...[
+                GestureDetector(
+                  onTap: () {
+                    _showConnectionSuccessfulDialog(
+                      context: context,
+                      name: name,
+                      conversationId: conversationId,
+                      targetUserId: target['userId']?.toString(),
+                      photoUrl: target['primaryPhotoUrl'],
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFFF71A65).withOpacity(0.12),
+                          const Color(0xFFFF528E).withOpacity(0.08),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFF71A65).withOpacity(0.2)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.chat_bubble_outline_rounded, size: 14, color: Color(0xFFF71A65)),
+                        SizedBox(width: 4),
+                        Text(
+                          'Connected',
+                          style: TextStyle(color: Color(0xFFF71A65), fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ] else if (_activeType == 'declined') ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'Declined',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

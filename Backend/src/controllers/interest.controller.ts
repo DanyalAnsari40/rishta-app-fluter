@@ -4,11 +4,13 @@ import { Interest } from '../models/interest.model';
 import { Block } from '../models/block.model';
 import { User } from '../models/user.model';
 import { Profile } from '../models/profile.model';
+import { Conversation } from '../models/conversation.model';
+import { Notification } from '../models/notification.model';
 import { ApiError } from '../utils/apiError';
 import { ApiResponse } from '../utils/apiResponse';
 
 /**
- * Sends an interest to a target user
+ * Sends an interest / message request to a target user
  */
 export const sendInterest = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -17,10 +19,6 @@ export const sendInterest = async (req: AuthenticatedRequest, res: Response, nex
 
     if (senderId.toString() === targetUserId) {
       throw ApiError.badRequest('You cannot send an interest to yourself');
-    }
-
-    if (!req.user!.emailVerified) {
-      throw ApiError.forbidden('Please verify your email address before sending interests');
     }
 
     const receiver = await User.findById(targetUserId);
@@ -48,29 +46,55 @@ export const sendInterest = async (req: AuthenticatedRequest, res: Response, nex
       ],
     });
 
+    let alreadyPending = false;
     if (interest) {
       if (interest.status === 'pending') {
-        throw ApiError.conflict('An interest is already pending between you and this user');
+        alreadyPending = true;
+      } else if (interest.status === 'accepted') {
+        return ApiResponse.success(res, 'Connection already established!', interest);
+      } else {
+        interest.status = 'pending';
+        interest.senderId = senderId;
+        interest.receiverId = targetUserId;
+        await interest.save();
       }
-      if (interest.status === 'accepted') {
-        throw ApiError.conflict('You have already accepted interest with this user');
-      }
+    } else {
+      interest = await Interest.create({
+        senderId,
+        receiverId: targetUserId,
+        status: 'pending',
+      });
     }
 
-    interest = await Interest.create({
+    // Always ensure notification is created for receiver so it shows in Alerts
+    const senderProfile = await Profile.findOne({ userId: senderId }).lean();
+    let senderName = senderProfile?.basicInfo?.fullName || 'Someone';
+    const nameParts = senderName.trim().split(' ');
+    if (nameParts.length > 1) {
+      senderName = `${nameParts[0]} ${nameParts[nameParts.length - 1][0]}.`;
+    }
+
+    await Notification.create({
+      recipientId: targetUserId,
       senderId,
-      receiverId: targetUserId,
-      status: 'pending',
+      type: 'new_interest',
+      title: 'New Interest Request ❤️',
+      body: `${senderName} sent you an interest request. Check Received tab to respond.`,
+      deepLink: '/interests?type=received',
     });
 
-    return ApiResponse.success(res, 'Interest sent successfully', interest, 201);
+    if (alreadyPending) {
+      return ApiResponse.success(res, 'Interest request is pending. Notification sent to target user.', interest);
+    }
+
+    return ApiResponse.success(res, 'Interest request sent successfully!', interest, 201);
   } catch (error) {
     next(error);
   }
 };
 
 /**
- * Accepts a received interest
+ * Accepts a received interest and creates a conversation connection
  */
 export const acceptInterest = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -90,10 +114,54 @@ export const acceptInterest = async (req: AuthenticatedRequest, res: Response, n
     interest.status = 'accepted';
     await interest.save();
 
+    // Ensure Conversation record exists in database
+    let conversation = await Conversation.findOne({
+      participants: { $all: [interest.senderId, interest.receiverId] },
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: [interest.senderId, interest.receiverId],
+        lastMessage: 'Connection successful! You can now start chatting.',
+        lastMessageAt: new Date(),
+      });
+    }
+
+    // Get details of sender to send notification & return to frontend
+    const senderProfile = await Profile.findOne({ userId: interest.senderId }).lean();
+    let senderName = senderProfile?.basicInfo?.fullName || 'Member';
+    const nameParts = senderName.trim().split(' ');
+    if (nameParts.length > 1) {
+      senderName = `${nameParts[0]} ${nameParts[nameParts.length - 1][0]}.`;
+    }
+
+    // Get details of acceptor to send notification to sender
+    const acceptorProfile = await Profile.findOne({ userId: receiverId }).lean();
+    let acceptorName = acceptorProfile?.basicInfo?.fullName || 'Someone';
+    const accParts = acceptorName.trim().split(' ');
+    if (accParts.length > 1) {
+      acceptorName = `${accParts[0]} ${accParts[accParts.length - 1][0]}.`;
+    }
+
+    await Notification.create({
+      recipientId: interest.senderId,
+      senderId: receiverId,
+      type: 'interest_accepted',
+      title: 'Connection Successful! 🎉',
+      body: `${acceptorName} accepted your interest request! You are now connected.`,
+      deepLink: `/chat/${conversation._id}`,
+    });
+
     return ApiResponse.success(
       res,
-      'Interest accepted! You can now chat with this profile.',
-      interest
+      'Connection successful! You are now connected and can chat.',
+      {
+        interest,
+        conversationId: conversation._id,
+        partnerName: senderName,
+        partnerUserId: interest.senderId,
+        partnerPhotoUrl: senderProfile?.photos?.find((ph: any) => ph.isPrimary)?.secureUrl || senderProfile?.photos?.[0]?.secureUrl || null,
+      }
     );
   } catch (error) {
     next(error);
@@ -160,7 +228,7 @@ export const withdrawInterest = async (req: AuthenticatedRequest, res: Response,
 export const getInterests = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!._id;
-    const type = (req.query.type as string) || 'received'; // received | sent | accepted | declined
+    const type = (req.query.type as string) || 'received';
 
     let query: any = {};
 
@@ -202,12 +270,22 @@ export const getInterests = async (req: AuthenticatedRequest, res: Response, nex
           ? Math.floor((Date.now() - new Date(profile.basicInfo.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
           : 24;
 
+        // Find existing conversation ID if accepted
+        let conversationId = null;
+        if (item.status === 'accepted') {
+          const conv = await Conversation.findOne({
+            participants: { $all: [userId, otherUserId] },
+          }).select('_id');
+          if (conv) conversationId = conv._id;
+        }
+
         return {
           interestId: item._id,
           status: item.status,
           isSender: item.senderId.toString() === userId.toString(),
           createdAt: item.createdAt,
           updatedAt: item.updatedAt,
+          conversationId,
           targetUser: {
             userId: otherUserId,
             name,

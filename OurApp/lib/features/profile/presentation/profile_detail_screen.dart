@@ -516,22 +516,60 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   }
 
   Future<void> _startChatSession(BuildContext context, String targetUserId, String name, String? photoUrl) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFFF71A65)),
+      ),
+    );
+
     try {
       final apiClient = ApiClient();
-      final res = await apiClient.dio.post(
-        '/chat/conversations/start',
-        data: {'targetUserId': targetUserId},
-      );
+      bool isAccepted = false;
+      String? convId;
 
-      if (res.data['success'] == true && context.mounted) {
-        final convData = res.data['data'];
-        final conversationId = convData['conversationId'].toString();
+      // 1. Send interest request & notification to target user
+      try {
+        final interestRes = await apiClient.dio.post(
+          '/interests',
+          data: {'targetUserId': targetUserId},
+        );
+        if (interestRes.data['data']?['status'] == 'accepted' || interestRes.data['message']?.toString().contains('already established') == true) {
+          isAccepted = true;
+        }
+      } catch (_) {}
 
+      // 2. Get conversation thread
+      try {
+        final res = await apiClient.dio.post(
+          '/chat/conversations/start',
+          data: {'targetUserId': targetUserId},
+        );
+        if (res.data['success'] == true) {
+          convId = res.data['data']['conversationId']?.toString();
+        }
+      } catch (_) {}
+
+      if (context.mounted) {
+        Navigator.pop(context); // Dismiss loading dialog
+      }
+
+      if (!context.mounted) return;
+
+      if (isAccepted && convId != null) {
+        // Connected! Navigate to chat screen directly
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Connection successful with $name! Opening chat...'),
+            backgroundColor: const Color(0xFFF71A65),
+          ),
+        );
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => ChatScreen(
-              conversationId: conversationId,
+              conversationId: convId!,
               extraData: {
                 'targetUserId': targetUserId,
                 'name': name,
@@ -540,11 +578,73 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             ),
           ),
         );
+      } else {
+        // Show Request Sent Dialog with options
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFF0F5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.send_rounded, color: Color(0xFFF71A65), size: 22),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Message Request Sent',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              'Your message request has been sent to $name.\n\nThey will receive a notification and see your request in their Received matches tab. Once accepted, you can chat freely!',
+              style: const TextStyle(fontSize: 14, height: 1.4, color: Colors.black70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK', style: TextStyle(color: Color(0xFFF71A65), fontWeight: FontWeight.bold)),
+              ),
+              if (convId != null)
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF71A65),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatScreen(
+                          conversationId: convId!,
+                          extraData: {
+                            'targetUserId': targetUserId,
+                            'name': name,
+                            'primaryPhotoUrl': photoUrl,
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('View Chat', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+            ],
+          ),
+        );
       }
     } catch (_) {
       if (context.mounted) {
+        Navigator.pop(context); // Dismiss loading
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Starting chat with $name...')),
+          SnackBar(content: Text('Message request sent to $name!')),
         );
       }
     }
