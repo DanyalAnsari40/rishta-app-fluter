@@ -244,29 +244,29 @@ profileSchema.index({
 export function calculateProfileCompleteness(profile: Partial<IProfile>): number {
   let score = 0;
 
-  if (profile.basicInfo?.fullName && profile.basicInfo?.gender && profile.basicInfo?.dateOfBirth && profile.basicInfo?.heightCm && profile.basicInfo?.city) {
+  if (profile.basicInfo?.fullName) {
     score += 25; // Basic info
   }
-  if (profile.religionCommunity?.religion && profile.religionCommunity?.sect) {
+  if (profile.religionCommunity?.religion) {
     score += 15; // Religion & Sect
   }
-  if (profile.educationCareer?.highestEducation && profile.educationCareer?.occupationType) {
+  if (profile.educationCareer?.highestEducation || profile.educationCareer?.jobTitle) {
     score += 15; // Education & Career
   }
-  if (profile.familyDetails?.familyType && profile.familyDetails?.familyStatus) {
+  if (profile.familyDetails?.familyType || profile.familyDetails?.familyStatus) {
     score += 10; // Family Details
   }
-  if (profile.lifestyleAbout?.aboutMe && profile.lifestyleAbout.aboutMe.length >= 50) {
+  if (profile.lifestyleAbout?.aboutMe && profile.lifestyleAbout.aboutMe.trim().length > 0) {
     score += 15; // About me
   }
   if (profile.photos && profile.photos.length > 0) {
     score += 10; // Photos uploaded
   }
-  if (profile.partnerPreferences?.ageMin && profile.partnerPreferences?.ageMax) {
+  if (profile.partnerPreferences) {
     score += 10; // Partner preferences
   }
 
-  return Math.min(score, 100);
+  return Math.min(Math.max(score, 20), 100);
 }
 
 export const Profile = mongoose.model<IProfile>('Profile', profileSchema);

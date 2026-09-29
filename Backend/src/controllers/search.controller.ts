@@ -7,6 +7,7 @@ import { MatchingService } from '../services/matching.service';
 
 /**
  * Gets Home feed data (New members, Recently active, Daily recommendations, and feed profiles)
+ * Returns all active public profiles by default, ordered by activity/recency.
  */
 export const getHomeFeed = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -14,10 +15,6 @@ export const getHomeFeed = async (req: AuthenticatedRequest, res: Response, next
 
     // Get current user's profile
     const myProfile = await Profile.findOne({ userId });
-
-    // Determine opposite gender filter
-    const myGender = myProfile?.basicInfo?.gender || 'male';
-    const targetGender = myGender === 'male' ? 'female' : 'male';
 
     // Find active, non-admin user IDs
     const activeUsers = await User.find({
@@ -28,23 +25,20 @@ export const getHomeFeed = async (req: AuthenticatedRequest, res: Response, next
 
     const activeUserIds = activeUsers.map((u) => u._id);
 
-    // Query profiles matching business rules (Opposite gender, profileCompleteness >= 70, not paused)
-    const baseQuery = {
+    // Base query for all active, non-paused member profiles
+    const finalQuery: any = {
       userId: { $in: activeUserIds },
-      'basicInfo.gender': targetGender,
       'privacySettings.isPaused': { $ne: true },
-      // In dev mode, lower threshold to 30 so initial profiles display seamlessly
-      profileCompleteness: { $gte: 30 },
     };
 
-    // 1. New Members (registered in last 14 days)
-    const newMembersRaw = await Profile.find(baseQuery)
+    // 1. New Members
+    const newMembersRaw = await Profile.find(finalQuery)
       .sort({ createdAt: -1 })
       .limit(10)
       .lean();
 
     // 2. Recently Active Members
-    const recentlyActiveRaw = await Profile.find(baseQuery)
+    const recentlyActiveRaw = await Profile.find(finalQuery)
       .sort({ updatedAt: -1 })
       .limit(10)
       .lean();
@@ -54,13 +48,13 @@ export const getHomeFeed = async (req: AuthenticatedRequest, res: Response, next
     const limit = parseInt(req.query.limit as string, 10) || 20;
     const skip = (page - 1) * limit;
 
-    const feedRaw = await Profile.find(baseQuery)
+    const feedRaw = await Profile.find(finalQuery)
       .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    const total = await Profile.countDocuments(baseQuery);
+    const total = await Profile.countDocuments(finalQuery);
 
     // Format profiles & attach compatibility percentages
     const formatProfile = (p: any) => {
@@ -116,7 +110,7 @@ export const getHomeFeed = async (req: AuthenticatedRequest, res: Response, next
 };
 
 /**
- * Searches profiles with multi-field filters & pagination
+ * Searches profiles with multi-field filters (Gender, City, Sect, Marital Status, Education) & pagination
  */
 export const searchProfiles = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -138,9 +132,6 @@ export const searchProfiles = async (req: AuthenticatedRequest, res: Response, n
       limit = '20',
     } = req.query;
 
-    const myGender = myProfile?.basicInfo?.gender || 'male';
-    const targetGender = (gender as string) || (myGender === 'male' ? 'female' : 'male');
-
     const activeUsers = await User.find({
       status: 'active',
       role: 'user',
@@ -151,10 +142,13 @@ export const searchProfiles = async (req: AuthenticatedRequest, res: Response, n
 
     const queryFilters: any = {
       userId: { $in: activeUserIds },
-      'basicInfo.gender': targetGender,
       'privacySettings.isPaused': { $ne: true },
-      profileCompleteness: { $gte: 30 },
     };
+
+    // Filter by gender if explicitly specified (male / female), otherwise show all
+    if (gender && gender !== 'all' && (gender === 'male' || gender === 'female')) {
+      queryFilters['basicInfo.gender'] = gender;
+    }
 
     if (city) {
       queryFilters['basicInfo.city'] = { $regex: new RegExp(city as string, 'i') };

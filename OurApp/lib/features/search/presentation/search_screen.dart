@@ -3,7 +3,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
 import '../../profile/presentation/profile_detail_screen.dart';
 
-
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
@@ -13,6 +12,7 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final _cityController = TextEditingController();
+  String? _selectedGender; // null/'all', 'male', 'female'
   String? _selectedSect;
   String? _selectedMaritalStatus;
   bool _isLoading = false;
@@ -38,6 +38,9 @@ class _SearchScreenState extends State<SearchScreen> {
       if (_cityController.text.isNotEmpty) {
         queryParams['city'] = _cityController.text.trim();
       }
+      if (_selectedGender != null && _selectedGender != 'all') {
+        queryParams['gender'] = _selectedGender!;
+      }
       if (_selectedSect != null) {
         queryParams['sect'] = _selectedSect!;
       }
@@ -61,6 +64,7 @@ class _SearchScreenState extends State<SearchScreen> {
   void _clearFilters() {
     setState(() {
       _cityController.clear();
+      _selectedGender = null;
       _selectedSect = null;
       _selectedMaritalStatus = null;
     });
@@ -70,6 +74,7 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final hasActiveFilters = _cityController.text.isNotEmpty ||
+        (_selectedGender != null && _selectedGender != 'all') ||
         _selectedSect != null ||
         _selectedMaritalStatus != null;
 
@@ -171,14 +176,60 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Filter Dropdowns Row
+                // Multi-Filter Dropdowns Row (Gender, Sect, Status)
                 Row(
                   children: [
+                    // Gender Dropdown
+                    Expanded(
+                      child: Container(
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF4F5F8),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedGender,
+                            isExpanded: true,
+                            hint: const Row(
+                              children: [
+                                Icon(Icons.wc_rounded, size: 16, color: Colors.grey),
+                                SizedBox(width: 4),
+                                Text('Gender: All', style: TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: Colors.grey),
+                            items: const [
+                              DropdownMenuItem(
+                                value: null,
+                                child: Text('Gender: All', style: TextStyle(fontSize: 11)),
+                              ),
+                              DropdownMenuItem(
+                                value: 'female',
+                                child: Text('Female Only', style: TextStyle(fontSize: 11)),
+                              ),
+                              DropdownMenuItem(
+                                value: 'male',
+                                child: Text('Male Only', style: TextStyle(fontSize: 11)),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              setState(() => _selectedGender = val);
+                              _performSearch();
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+
                     // Sect Dropdown
                     Expanded(
                       child: Container(
                         height: 44,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF4F5F8),
                           borderRadius: BorderRadius.circular(14),
@@ -191,23 +242,23 @@ class _SearchScreenState extends State<SearchScreen> {
                             hint: const Row(
                               children: [
                                 Icon(Icons.people_outline_rounded, size: 16, color: Colors.grey),
-                                SizedBox(width: 6),
-                                Text('Sect: All', style: TextStyle(fontSize: 12, color: Colors.black87)),
+                                SizedBox(width: 4),
+                                Text('Sect: All', style: TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w600)),
                               ],
                             ),
-                            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Colors.grey),
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: Colors.grey),
                             items: const [
                               DropdownMenuItem(
                                 value: null,
-                                child: Text('Sect: All', style: TextStyle(fontSize: 12)),
+                                child: Text('Sect: All', style: TextStyle(fontSize: 11)),
                               ),
                               DropdownMenuItem(
                                 value: 'Sunni',
-                                child: Text('Sunni', style: TextStyle(fontSize: 12)),
+                                child: Text('Sunni', style: TextStyle(fontSize: 11)),
                               ),
                               DropdownMenuItem(
                                 value: 'Shia',
-                                child: Text('Shia', style: TextStyle(fontSize: 12)),
+                                child: Text('Shia', style: TextStyle(fontSize: 11)),
                               ),
                             ],
                             onChanged: (val) {
@@ -218,13 +269,13 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 6),
 
                     // Marital Status Dropdown
                     Expanded(
                       child: Container(
                         height: 44,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF4F5F8),
                           borderRadius: BorderRadius.circular(14),
@@ -237,23 +288,23 @@ class _SearchScreenState extends State<SearchScreen> {
                             hint: const Row(
                               children: [
                                 Icon(Icons.favorite_outline_rounded, size: 16, color: Colors.grey),
-                                SizedBox(width: 6),
-                                Text('Status: Any', style: TextStyle(fontSize: 12, color: Colors.black87)),
+                                SizedBox(width: 4),
+                                Text('Status: Any', style: TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w600)),
                               ],
                             ),
-                            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Colors.grey),
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: Colors.grey),
                             items: const [
                               DropdownMenuItem(
                                 value: null,
-                                child: Text('Status: Any', style: TextStyle(fontSize: 12)),
+                                child: Text('Status: Any', style: TextStyle(fontSize: 11)),
                               ),
                               DropdownMenuItem(
                                 value: 'never_married',
-                                child: Text('Never Married', style: TextStyle(fontSize: 12)),
+                                child: Text('Never Married', style: TextStyle(fontSize: 11)),
                               ),
                               DropdownMenuItem(
                                 value: 'divorced',
-                                child: Text('Divorced', style: TextStyle(fontSize: 12)),
+                                child: Text('Divorced', style: TextStyle(fontSize: 11)),
                               ),
                             ],
                             onChanged: (val) {
@@ -372,124 +423,124 @@ class _SearchScreenState extends State<SearchScreen> {
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            // Profile Photo with gradient ring
-            Container(
-              padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFFF71A65), Color(0xFFFF528E)],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: CircleAvatar(
-                radius: 28,
-                backgroundColor: Colors.grey.shade200,
-                backgroundImage: p['primaryPhotoUrl'] != null ? NetworkImage(p['primaryPhotoUrl']) : null,
-                child: p['primaryPhotoUrl'] == null ? const Icon(Icons.person, color: Colors.grey) : null,
-              ),
-            ),
-            const SizedBox(width: 14),
-
-            // Profile info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          '${p['name'] ?? 'Member'}, ${p['age'] ?? ''}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: Colors.black87,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      if (p['isVerifiedBadge'] == true)
-                        const Icon(Icons.verified_rounded, color: Color(0xFFF71A65), size: 16),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined, size: 13, color: Colors.grey),
-                      const SizedBox(width: 2),
-                      Text(
-                        '${p['city'] ?? 'Pakistan'} • ${p['sect'] ?? 'Muslim'}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '${p['education'] ?? 'Educated'} • ${p['occupation'] ?? 'Professional'}',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-
-            // Compatibility percentage badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFFF71A65).withOpacity(0.12),
-                    const Color(0xFFFF528E).withOpacity(0.08),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFFF71A65).withOpacity(0.2),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    '${p['compatibilityPercentage'] ?? 85}%',
-                    style: const TextStyle(
-                      color: Color(0xFFF71A65),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const Text(
-                    'Match',
-                    style: TextStyle(
-                      color: Color(0xFFF71A65),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              // Profile Photo with gradient ring
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFF71A65), Color(0xFFFF528E)],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Colors.grey.shade200,
+                  backgroundImage: p['primaryPhotoUrl'] != null ? NetworkImage(p['primaryPhotoUrl']) : null,
+                  child: p['primaryPhotoUrl'] == null ? const Icon(Icons.person, color: Colors.grey) : null,
+                ),
+              ),
+              const SizedBox(width: 14),
+
+              // Profile info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '${p['name'] ?? 'Member'}, ${p['age'] ?? ''}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: Colors.black87,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        if (p['isVerifiedBadge'] == true)
+                          const Icon(Icons.verified_rounded, color: Color(0xFFF71A65), size: 16),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 13, color: Colors.grey),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${p['city'] ?? 'Pakistan'} • ${p['sect'] ?? 'Muslim'}',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${p['education'] ?? 'Educated'} • ${p['occupation'] ?? 'Professional'}',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Compatibility percentage badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFF71A65).withOpacity(0.12),
+                      const Color(0xFFFF528E).withOpacity(0.08),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFF71A65).withOpacity(0.2),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '${p['compatibilityPercentage'] ?? 85}%',
+                      style: const TextStyle(
+                        color: Color(0xFFF71A65),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const Text(
+                      'Match',
+                      style: TextStyle(
+                        color: Color(0xFFF71A65),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
