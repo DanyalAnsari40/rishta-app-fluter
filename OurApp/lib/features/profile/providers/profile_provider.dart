@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 import '../../../data/models/profile_model.dart';
 
@@ -77,12 +79,92 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     }
   }
 
+  /// Upload a photo to Cloudinary via signed upload, then register it in the profile.
+  /// Returns true on success, false on failure.
+  Future<bool> uploadPhoto(String filePath) async {
+    state = state.copyWith(isSaving: true, errorMessage: null);
+    try {
+      // Step 1: Get signed upload signature from backend
+      final sigResponse = await _apiClient.dio.get('/profile/photo-signature');
+      if (sigResponse.data['success'] != true) {
+        state = state.copyWith(isSaving: false, errorMessage: 'Failed to get upload signature');
+        return false;
+      }
+
+      final sigData = sigResponse.data['data'];
+      final String signature = sigData['signature'];
+      final int timestamp = sigData['timestamp'];
+      final String folder = sigData['folder'];
+      final String type = sigData['type'];
+      final String apiKey = sigData['apiKey'];
+      final String cloudName = sigData['cloudName'];
+
+      // Step 2: Upload directly to Cloudinary
+      final uploadUrl = 'https://api.cloudinary.com/v1_1/$cloudName/image/upload';
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath),
+        'api_key': apiKey,
+        'timestamp': timestamp,
+        'signature': signature,
+        'folder': folder,
+        'type': type,
+      });
+
+      final uploadDio = Dio(); // Separate Dio instance for Cloudinary (no auth header)
+      final uploadResponse = await uploadDio.post(uploadUrl, data: formData);
+
+      if (uploadResponse.statusCode != 200) {
+        state = state.copyWith(isSaving: false, errorMessage: 'Failed to upload photo to cloud');
+        return false;
+      }
+
+      final String publicId = uploadResponse.data['public_id'];
+      final String secureUrl = uploadResponse.data['secure_url'];
+      final int width = uploadResponse.data['width'] ?? 0;
+      final int height = uploadResponse.data['height'] ?? 0;
+
+      // Step 3: Register the uploaded photo in the profile via backend
+      final addResponse = await _apiClient.dio.post('/profile/photos', data: {
+        'publicId': publicId,
+        'secureUrl': secureUrl,
+        'width': width,
+        'height': height,
+        'isPrimary': true,
+      });
+
+      if (addResponse.data['success'] == true) {
+        // Re-fetch profile to get updated photos array
+        await fetchMyProfile();
+        state = state.copyWith(isSaving: false);
+        return true;
+      } else {
+        state = state.copyWith(isSaving: false, errorMessage: 'Failed to save photo to profile');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Photo upload error: $e');
+      state = state.copyWith(isSaving: false, errorMessage: 'Failed to upload photo');
+      return false;
+    }
+  }
+
   Future<bool> submitAllSections(Map<String, Map<String, dynamic>> allSections) async {
     state = state.copyWith(isSaving: true, errorMessage: null);
     try {
+      // Save each section and check for errors
       for (final entry in allSections.entries) {
-        await _apiClient.dio.put('/profile/section/${entry.key}', data: entry.value);
+        final response = await _apiClient.dio.put(
+          '/profile/section/${entry.key}',
+          data: entry.value,
+        );
+        if (response.data['success'] != true) {
+          final msg = response.data['message'] ?? 'Failed to save section: ${entry.key}';
+          state = state.copyWith(isSaving: false, errorMessage: msg);
+          return false;
+        }
       }
+
+      // Re-fetch updated profile from server
       final response = await _apiClient.dio.get('/profile/me');
       if (response.data['success'] == true) {
         final updatedProfile = ProfileModel.fromJson(response.data['data']);
@@ -94,6 +176,10 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       }
       state = state.copyWith(isSaving: false);
       return true;
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? 'Failed to save profile. Please check your connection.';
+      state = state.copyWith(isSaving: false, errorMessage: msg);
+      return false;
     } catch (e) {
       state = state.copyWith(isSaving: false, errorMessage: 'Failed to save profile');
       return false;

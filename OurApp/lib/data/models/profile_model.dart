@@ -307,6 +307,34 @@ class PartnerPreferencesModel {
   }
 }
 
+class PrivacySettingsModel {
+  final bool isPaused;
+  final String photoVisibility;
+  final String phoneVisibility;
+
+  PrivacySettingsModel({
+    this.isPaused = false,
+    this.photoVisibility = 'everyone',
+    this.phoneVisibility = 'mutual_accept_only',
+  });
+
+  factory PrivacySettingsModel.fromJson(Map<String, dynamic> json) {
+    return PrivacySettingsModel(
+      isPaused: json['isPaused'] ?? false,
+      photoVisibility: json['photoVisibility'] ?? 'everyone',
+      phoneVisibility: json['phoneVisibility'] ?? 'mutual_accept_only',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'isPaused': isPaused,
+      'photoVisibility': photoVisibility,
+      'phoneVisibility': phoneVisibility,
+    };
+  }
+}
+
 class ProfileModel {
   final String id;
   final String userId;
@@ -317,6 +345,7 @@ class ProfileModel {
   final LifestyleAboutModel lifestyleAbout;
   final List<PhotoModel> photos;
   final PartnerPreferencesModel partnerPreferences;
+  final PrivacySettingsModel privacySettings;
   final int profileCompleteness;
   final bool isVerifiedBadge;
 
@@ -330,6 +359,7 @@ class ProfileModel {
     required this.lifestyleAbout,
     required this.photos,
     required this.partnerPreferences,
+    required this.privacySettings,
     required this.profileCompleteness,
     this.isVerifiedBadge = false,
   });
@@ -345,6 +375,7 @@ class ProfileModel {
       lifestyleAbout: LifestyleAboutModel.fromJson(json['lifestyleAbout'] ?? {}),
       photos: (json['photos'] as List<dynamic>?)?.map((e) => PhotoModel.fromJson(e)).toList() ?? [],
       partnerPreferences: PartnerPreferencesModel.fromJson(json['partnerPreferences'] ?? {}),
+      privacySettings: PrivacySettingsModel.fromJson(json['privacySettings'] ?? {}),
       profileCompleteness: json['profileCompleteness'] ?? 0,
       isVerifiedBadge: json['isVerifiedBadge'] ?? false,
     );

@@ -158,8 +158,21 @@ class _ProfileWizardScreenState extends ConsumerState<ProfileWizardScreen> {
         break;
 
       case 6:
-        // Photo upload step
-        success = true;
+        // Photo upload step — actually upload to Cloudinary
+        if (_selectedImage != null) {
+          success = await notifier.uploadPhoto(_selectedImage!.path);
+          if (!success && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(ref.read(profileProvider).errorMessage ?? 'Failed to upload photo'),
+                backgroundColor: AppTheme.error,
+              ),
+            );
+          }
+        } else {
+          // Allow skipping photo upload (optional step)
+          success = true;
+        }
         break;
 
       case 7:
@@ -822,7 +835,16 @@ class _ProfileWizardScreenState extends ConsumerState<ProfileWizardScreen> {
                           backgroundColor: Colors.white,
                           backgroundImage: _selectedImage != null
                               ? FileImage(File(_selectedImage!.path)) as ImageProvider
-                              : const AssetImage('assets/images/usman_ali.jpg'),
+                              : (state.profile != null && state.profile!.photos.isNotEmpty
+                                  ? NetworkImage(state.profile!.photos.firstWhere(
+                                      (p) => p.isPrimary,
+                                      orElse: () => state.profile!.photos.first,
+                                    ).secureUrl) as ImageProvider
+                                  : null),
+                          child: (_selectedImage == null &&
+                                  (state.profile == null || state.profile!.photos.isEmpty))
+                              ? const Icon(Icons.person, size: 30, color: Color(0xFFF71A65))
+                              : null,
                         ),
                       ),
                       const SizedBox(width: 14),

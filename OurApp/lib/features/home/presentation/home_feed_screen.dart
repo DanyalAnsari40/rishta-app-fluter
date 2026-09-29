@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
+import '../../profile/presentation/profile_detail_screen.dart';
+
 
 class HomeFeedScreen extends ConsumerStatefulWidget {
   final Function(int tabIndex)? onNavigateTab;
@@ -423,8 +425,17 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> {
               final String? photoUrl = p['primaryPhotoUrl'];
               final isFav = _shortlistedIds.contains(id);
 
-              return Container(
-                width: 155,
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProfileDetailScreen(profileData: p),
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 155,
                 margin: const EdgeInsets.symmetric(horizontal: 6),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -518,8 +529,9 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> {
                     ),
                   ],
                 ),
-              );
-            },
+              ),
+            );
+          },
           ),
         ),
       ],
@@ -556,7 +568,16 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> {
     final photoUrl = p['primaryPhotoUrl'];
     final compatibility = p['compatibilityPercentage'] ?? 85;
 
-    return Card(
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProfileDetailScreen(profileData: p),
+          ),
+        );
+      },
+      child: Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -658,6 +679,7 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

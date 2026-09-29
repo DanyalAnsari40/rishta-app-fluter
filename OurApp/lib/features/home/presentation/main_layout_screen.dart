@@ -382,9 +382,81 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
-          // 2. Menu Item List
+          // 2. Profile Visibility Switch Card
+          Builder(
+            builder: (context) {
+              final bool isVisible = !(profile?.privacySettings.isPaused ?? false);
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isVisible ? const Color(0xFFFFF0F5) : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isVisible ? AppTheme.primary.withValues(alpha: 0.3) : Colors.grey.shade300,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isVisible ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                      color: isVisible ? AppTheme.primary : Colors.grey.shade600,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isVisible ? 'Visible in Feed & Search' : 'Profile Hidden (Paused)',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: isVisible ? AppTheme.primary : Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isVisible ? 'Other users can see your profile' : 'Hidden from feed & search',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isVisible ? AppTheme.primary.withValues(alpha: 0.8) : Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: isVisible,
+                      activeThumbColor: AppTheme.primary,
+                      onChanged: (val) async {
+                        final success = await ref.read(profileProvider.notifier).saveSection('privacy-settings', {
+                          'isPaused': !val,
+                        });
+                        if (context.mounted && success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(val
+                                  ? 'Your profile is now visible to all users!'
+                                  : 'Your profile is now hidden from search & feed'),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          // 3. Menu Item List
           ...menuItems.map((item) {
             final IconData icon = item['icon'] as IconData;
             final String title = item['title'] as String;

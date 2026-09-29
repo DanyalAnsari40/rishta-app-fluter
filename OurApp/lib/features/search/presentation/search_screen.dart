@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
+import '../../profile/presentation/profile_detail_screen.dart';
+
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -359,8 +361,17 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildSearchCard(Map<String, dynamic> p) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProfileDetailScreen(profileData: p),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -478,6 +489,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

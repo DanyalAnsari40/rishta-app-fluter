@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
+import '../../profile/presentation/profile_detail_screen.dart';
+
 
 class ShortlistScreen extends StatefulWidget {
   const ShortlistScreen({super.key});
@@ -64,6 +66,16 @@ class _ShortlistScreenState extends State<ShortlistScreen> {
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       child: ListTile(
+                        onTap: () {
+                          if (p != null) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ProfileDetailScreen(profileData: Map<String, dynamic>.from(p)),
+                              ),
+                            );
+                          }
+                        },
                         leading: CircleAvatar(
                           radius: 26,
                           backgroundImage: p['primaryPhotoUrl'] != null

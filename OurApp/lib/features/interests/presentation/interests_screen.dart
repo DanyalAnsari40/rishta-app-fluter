@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
+import '../../profile/presentation/profile_detail_screen.dart';
+
 
 class InterestsScreen extends StatefulWidget {
   const InterestsScreen({super.key});
@@ -288,8 +290,17 @@ class _InterestsScreenState extends State<InterestsScreen> with SingleTickerProv
   }
 
   Widget _buildInterestCard(Map<String, dynamic> target, String interestId) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProfileDetailScreen(profileData: target),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -449,6 +460,7 @@ class _InterestsScreenState extends State<InterestsScreen> with SingleTickerProv
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

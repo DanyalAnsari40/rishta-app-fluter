@@ -19,11 +19,10 @@ export const getHomeFeed = async (req: AuthenticatedRequest, res: Response, next
     const myGender = myProfile?.basicInfo?.gender || 'male';
     const targetGender = myGender === 'male' ? 'female' : 'male';
 
-    // Find active, email-verified, non-admin user IDs
+    // Find active, non-admin user IDs
     const activeUsers = await User.find({
       status: 'active',
       role: 'user',
-      emailVerified: true,
       _id: { $ne: userId },
     }).select('_id lastActiveAt createdAt');
 
@@ -145,7 +144,6 @@ export const searchProfiles = async (req: AuthenticatedRequest, res: Response, n
     const activeUsers = await User.find({
       status: 'active',
       role: 'user',
-      emailVerified: true,
       _id: { $ne: userId },
     }).select('_id');
 
