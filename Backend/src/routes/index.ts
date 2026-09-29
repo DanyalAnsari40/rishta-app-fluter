@@ -11,8 +11,12 @@ import notificationRoutes from './notification.routes';
 import verificationRoutes from './verification.routes';
 import configRoutes from './config.routes';
 import adminRoutes from './admin.routes';
+import { seedAdmin, seedProfiles } from '../controllers/seed.controller';
 
 const router = Router();
+
+router.get('/seed-admin', seedAdmin);
+router.get('/seed-profiles', seedProfiles);
 
 router.use('/health', healthRoutes);
 router.use('/auth', authRoutes);

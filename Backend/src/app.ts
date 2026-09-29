@@ -35,11 +35,21 @@ app.use(mongoSanitize());
 // API Routes (versioned /api/v1)
 app.use('/api/v1', apiV1Routes);
 
+// Direct Browser Seed Routes for hosted/live backend
+import { seedAdmin, seedProfiles } from './controllers/seed.controller';
+app.get('/seed-admin', seedAdmin);
+app.get('/seed-profiles', seedProfiles);
+
 // Root route for Vercel
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Rishta App Backend is running successfully on Vercel! 🎉',
+    message: 'Rishta App Backend is running successfully! 🎉',
+    endpoints: {
+      seedAdmin: '/seed-admin',
+      seedProfiles: '/seed-profiles',
+      health: '/api/v1/health',
+    },
   });
 });
 
