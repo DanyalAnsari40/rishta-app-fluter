@@ -51,6 +51,45 @@ export const getConversations = async (req: AuthenticatedRequest, res: Response,
   }
 };
 
+export const getOrCreateConversation = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!._id;
+    const { targetUserId } = req.body;
+
+    if (!targetUserId) {
+      throw ApiError.badRequest('Target user ID is required');
+    }
+
+    let conversation = await Conversation.findOne({
+      participants: { $all: [userId, targetUserId] },
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: [userId, targetUserId],
+        lastMessage: 'Conversation started',
+        lastMessageAt: new Date(),
+      });
+    }
+
+    const profile = await Profile.findOne({ userId: targetUserId }).lean();
+    let name = profile?.basicInfo?.fullName || 'Member';
+    const parts = name.trim().split(' ');
+    if (parts.length > 1) {
+      name = `${parts[0]} ${parts[parts.length - 1][0]}.`;
+    }
+
+    return ApiResponse.success(res, 'Conversation initialized', {
+      conversationId: conversation._id,
+      targetUserId,
+      name,
+      primaryPhotoUrl: profile?.photos?.find((ph: any) => ph.isPrimary)?.secureUrl || profile?.photos?.[0]?.secureUrl || null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getMessages = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!._id;
@@ -134,4 +173,3 @@ export const sendMessage = async (req: AuthenticatedRequest, res: Response, next
     next(error);
   }
 };
-

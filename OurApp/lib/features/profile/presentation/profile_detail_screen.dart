@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
+import '../../chat/presentation/chat_screen.dart';
 
 class ProfileDetailScreen extends StatefulWidget {
   final Map<String, dynamic> profileData;
@@ -475,12 +476,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 height: 52,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Message request sent to $name!'),
-                        backgroundColor: const Color(0xFFF71A65),
-                      ),
-                    );
+                    final targetUserId = widget.userId ?? _data['userId'] ?? _data['_id'] ?? _data['id'];
+                    if (targetUserId != null) {
+                      _startChatSession(context, targetUserId.toString(), name, photoUrl);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Message request sent to $name!')),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFF71A65),
@@ -510,6 +513,41 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _startChatSession(BuildContext context, String targetUserId, String name, String? photoUrl) async {
+    try {
+      final apiClient = ApiClient();
+      final res = await apiClient.dio.post(
+        '/chat/conversations/start',
+        data: {'targetUserId': targetUserId},
+      );
+
+      if (res.data['success'] == true && context.mounted) {
+        final convData = res.data['data'];
+        final conversationId = convData['conversationId'].toString();
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              conversationId: conversationId,
+              extraData: {
+                'targetUserId': targetUserId,
+                'name': name,
+                'primaryPhotoUrl': photoUrl,
+              },
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Starting chat with $name...')),
+        );
+      }
+    }
   }
 
   Widget _buildFallbackHeaderImage() {
