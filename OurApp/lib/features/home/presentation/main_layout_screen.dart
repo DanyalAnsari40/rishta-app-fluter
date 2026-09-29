@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -61,6 +62,7 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
     ];
 
     return Scaffold(
+      extendBody: true,
       backgroundColor: const Color(0xFFF9F9FB),
       appBar: _buildAppBar(),
       body: IndexedStack(
@@ -73,8 +75,6 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
 
   // Header AppBar matching design screenshot
   PreferredSizeWidget _buildAppBar() {
-    final titles = ['Home', 'Matches', 'Search', 'Alerts', 'Menu'];
-
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0.5,
@@ -115,24 +115,6 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
               ],
             ),
           ),
-          if (_currentIndex != 0) ...[
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                titles[_currentIndex],
-                style: const TextStyle(
-                  color: Color(0xFF1C1C1E),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
       actions: [
@@ -196,7 +178,7 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
     );
   }
 
-  // Modern Bottom Navigation Bar matching design screenshot
+  // Modern Glassic Jelly Bottom Navigation Bar with Sliding Blob Animation
   Widget _buildBottomNavBar() {
     final items = const [
       _NavItemData(activeIcon: Icons.home_rounded, inactiveIcon: Icons.home_outlined, label: 'Home'),
@@ -206,66 +188,132 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
       _NavItemData(activeIcon: Icons.tune_rounded, inactiveIcon: Icons.menu_rounded, label: 'Menu'),
     ];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+        child: Container(
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.82),
+            borderRadius: BorderRadius.circular(36),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFF71A65).withValues(alpha: 0.16),
+                blurRadius: 24,
+                spreadRadius: 2,
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.95),
+              width: 1.5,
+            ),
           ),
-        ],
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade200, width: 0.8),
-        ),
-      ),
-      child: SafeArea(
-        child: SizedBox(
-          height: 62,
-          child: Row(
-            children: List.generate(items.length, (index) {
-              final isSelected = _currentIndex == index;
-              final item = items[index];
-
-              return Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _currentIndex = index),
-                  splashColor: AppTheme.primary.withValues(alpha: 0.1),
-                  highlightColor: Colors.transparent,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Active indicator pill bar top or active icon
-                      Icon(
-                        isSelected ? item.activeIcon : item.inactiveIcon,
-                        color: isSelected ? AppTheme.primary : const Color(0xFF8E8E93),
-                        size: 24,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          color: isSelected ? AppTheme.primary : const Color(0xFF8E8E93),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(36),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Stack(
+                children: [
+                  // Animated Liquid Jelly Capsule background that slides smoothly between tabs
+                  AnimatedAlign(
+                    duration: const Duration(milliseconds: 380),
+                    curve: Curves.easeOutBack,
+                    alignment: Alignment(
+                      -1.0 + (_currentIndex * (2.0 / (items.length - 1))),
+                      0.0,
+                    ),
+                    child: FractionallySizedBox(
+                      widthFactor: 1.0 / items.length,
+                      heightFactor: 0.88,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFFF71A65),
+                              Color(0xFFFF528E),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFF71A65).withValues(alpha: 0.42),
+                              blurRadius: 14,
+                              spreadRadius: 1,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
                       ),
-                      if (isSelected)
-                        Container(
-                          margin: const EdgeInsets.only(top: 2),
-                          width: 14,
-                          height: 2.5,
-                          decoration: BoxDecoration(
-                            color: AppTheme.primary,
-                            borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+
+                  // Interactive Tab Icons & Labels over the Liquid Jelly Capsule
+                  Row(
+                    children: List.generate(items.length, (index) {
+                      final isSelected = _currentIndex == index;
+                      final item = items[index];
+
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _currentIndex = index;
+                              if (index == 3) _unreadCount = 0;
+                            });
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: Center(
+                            child: TweenAnimationBuilder<double>(
+                              key: ValueKey('jelly_tab_${index}_$isSelected'),
+                              tween: Tween<double>(begin: isSelected ? 0.75 : 1.0, end: isSelected ? 1.0 : 0.92),
+                              duration: const Duration(milliseconds: 400),
+                              curve: Curves.elasticOut,
+                              builder: (context, scale, child) {
+                                return Transform.scale(
+                                  scale: scale,
+                                  child: child,
+                                );
+                              },
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    isSelected ? item.activeIcon : item.inactiveIcon,
+                                    color: isSelected ? Colors.white : const Color(0xFF8E8E93),
+                                    size: isSelected ? 22 : 21,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    item.label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: isSelected ? Colors.white : const Color(0xFF8E8E93),
+                                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                      fontSize: 10,
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                    ],
+                      );
+                    }),
                   ),
-                ),
-              );
-            }),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -487,39 +535,42 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
 
           const SizedBox(height: 12),
 
-          // 3. Menu Item List
+          // 3. Menu Item List wrapped in Material to prevent ListTile assertion warning
           ...menuItems.map((item) {
             final IconData icon = item['icon'] as IconData;
             final String title = item['title'] as String;
             final VoidCallback onTap = item['onTap'] as VoidCallback;
 
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: ListTile(
-                onTap: onTap,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                leading: Container(
-                  width: 36,
-                  height: 36,
-                  alignment: Alignment.center,
-                  child: Icon(
-                    icon,
-                    color: AppTheme.primary,
-                    size: 24,
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Material(
+                color: Colors.transparent,
+                child: ListTile(
+                  onTap: onTap,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      icon,
+                      color: AppTheme.primary,
+                      size: 24,
+                    ),
                   ),
-                ),
-                title: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF2C2C2E),
+                  title: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2C2C2E),
+                    ),
                   ),
-                ),
-                trailing: const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFFC7C7CC),
-                  size: 22,
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFFC7C7CC),
+                    size: 22,
+                  ),
                 ),
               ),
             );
@@ -527,37 +578,41 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
 
           const SizedBox(height: 12),
 
-          // 3. Logout Item (Pink/Red logout button at bottom)
+          // 4. Logout Item wrapped in Material
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: ListTile(
-              onTap: () async {
-                await ref.read(authProvider.notifier).logout();
-                if (mounted) {
-                  context.go('/login');
-                }
-              },
-              contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              leading: Container(
-                width: 36,
-                height: 36,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.logout_rounded,
-                  color: AppTheme.primary,
-                  size: 24,
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Material(
+              color: Colors.transparent,
+              child: ListTile(
+                onTap: () async {
+                  await ref.read(authProvider.notifier).logout();
+                  if (mounted) {
+                    context.go('/login');
+                  }
+                },
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                leading: Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    color: AppTheme.primary,
+                    size: 24,
+                  ),
                 ),
-              ),
-              title: const Text(
-                'Logout',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primary,
+                title: const Text(
+                  'Logout',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primary,
+                  ),
                 ),
               ),
             ),
           ),
+          const SizedBox(height: 80),
         ],
       ),
     );
